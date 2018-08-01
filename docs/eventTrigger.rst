@@ -82,7 +82,7 @@ The trigger need to be configurated within the flow file along with the project 
 Event trigger is composed of a list of event dependencies, max wait time and schedule.
 Take the following figure as example:
 
-.. image:: TriggerExample.png
+.. image:: figures/TriggerExample.png
 
 - **Max Wait Time**: How long the trigger will wait for all dependencies to be available before cancelling it.
 - **Trigger.schedule**: The schedule to perform this workflow on the regular basis. We use the cron time format here to specify, creating a trigger followed by the project workflow every 2 minutes 
@@ -94,38 +94,72 @@ Therefore, this trigger example will launch the flow once detecting Kafka event 
 The matching mechanism can be extended other than regex since now it is implemented as a generic interface.
 
 
-
 *****
 Event Based Trigger Example With Azkaban UI
 *****
+All scheduled data trigger will show up Azkaban Flow Trigger section. Also, project admins are able to pause and resume a scheduled trigger for undesirable situation.
+
+
+**Trigger info page for a specific flow:**
+
+.. image:: figures/TriggerInfo.png
+
+**Current and historic triggers for a specific flow:**
+
+.. image:: figures/TriggerList.png
+
 
 
 Follow these steps to run end to end local test:
 
-1. Clone the repo:
-::
-  git clone https://github.com/azkaban/azkaban.git
-2. Build Azkaban and create an installation package:
-::
-  cd azkaban; ./gradlew build installDist
-3. Start the solo server: 
-::
-  cd azkaban-solo-server/build/install/azkaban-solo-server; bin/azkaban-solo-start.sh
-Azkaban solo server should be all set, by listening to ``8081`` port at default to accept incoming network request. So, open a web browser and check out ``http://localhost:8081/``
+1.Start Kafka Broker Locally:
 
-4. Stop server:
+Following `Kafka QuickStart <https://kafka.apache.org/quickstart/>`_ to run these Kafka console scripts in Kafka package
 ::
-  bin/azkaban-solo-shutdown.sh
+  *Start ZooKeeper
+  bin/zookeeper-server-start.sh config/zookeeper.properties
+  *Start Kafka Server
+  bin/kafka-server-start.sh config/server.properties
+
+2. Send Json event to topics with AzEvent_Topic4 as example:
+::
+  bin/kafka-console-producer.sh --broker-list localhost:9092 --topic AzEvent_Topic4 < recordPartition.json
+Here is how my ``recordPartition.json`` looks like:
+
+.. code-block:: json
+
+    {
+        "name":"Charlie", 
+        "team": "Azkaban",
+        "event":"MetastorePartitionAuditEvent"
+    }
+
+Once this event arrived, Azkaban will marked this specific event depedency as success. 
+
+.. image:: figures/Success.png
+
+3. Send another event from producer to launch the flow:
+::
+  bin/kafka-console-producer.sh --broker-list localhost:9092 --topic AzEvent_Topic4 < recordHadoop.json
+
+
+**Trigger the workflows that have all dependencies cleared out:**
+
+.. image:: figures/FlowExecuted.png
 
 *****
 Limitation
 *****
-
+Since our design purpose is to decouple the trigger condition from the action to take, currently there is a limitation on deserializing record. Although Kafka provides the ability to publish and subscribe to streams of records on custom serializer and deserializer. What we have right now is limited to Kafka build in String deserializer only. We are planning to enhance the flexibility on users to upload JAR with their own custom deserialize function in the near future. 
 
 *****
 Resource Referance
 *****
-- `MySQL Documentation Site <https://dev.mysql.com/doc/>`_
+- `Event Trigger Design Proposal <https://docs.google.com/document/d/1KxT17D8nvPvB-yTVZZEKuLMDp_TjdN1L6vagcZ4ypRI/edit>`_
+- `Event Trigger Presentation <https://docs.google.com/presentation/d/1fli7yIQNmKA_ZIj18JvDkAg30SrjpD7wlHJDXKeso7c/edit#slide=id.p1>`_
+- `Event Trigger Poster <https://docs.google.com/presentation/d/1M8Jh39MtqeGJWwkPxLWLAX6YBRWJCInmoxp-YIYq228/edit#slide=id.p1>`_
+
+
 
 
 
