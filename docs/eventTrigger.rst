@@ -9,60 +9,98 @@ Event Based Trigger
 
 
 
-Currently there are only few ways to launch jobs in Azkaban including schedules and API. However, they are limited because sometimes jobs need to be executed automatically on demand. Event trigger is a new feature introduced by Azkaban. It defines a new paradigm of triggering flows - triggering a flow on event arrival. This concept enables users to define events that the flow depends on. Once all of the dependencies become ready, workflow will be triggered. 
-By utilizing 
-By utilizing Apache Kafka, we do the regular expression match on the Kafka event payload. With a contain-a logic matching, a dependency will be marked as satisfied only if the whole payload contains the Regex pattern that user predefines.
+Currently there are only few ways to launch jobs in Azkaban including schedules and API. However, they are limited because sometimes jobs need to be executed automatically on demand. Event trigger is a new feature introduced by Azkaban. It defines a new paradigm of triggering flows - triggering a flow on event arrival. This concept enables users to define events that the flow depends on. Once all of the dependencies become ready, a workflow will be triggered. 
 
-
-- Set up the database
-- Configure database to use multiple executors
-- Download and install the Executor Server for each executor configured in database
-- Install Azkaban Plugins
-- Install the Web Server
-
+Apache Kafka is a Publish & Subscribe data streaming system. By utilizing Kafka, we do the regular expression match on the Kafka event payload. With the contain-a logic matching, a dependency will be marked as satisfied only if the whole payload contains the Regex pattern that user predefines.
 
 *****
-Getting started with Event Trigger on the Solo Server
+Getting started with Deploying Event Trigger on the Solo Server
 *****
 
 Azkaban builds use Gradle (downloads automatically when run using gradlew which is the Gradle wrapper) and requires Java 8 or higher.
 
-The following commands run on *nix platforms like Linux, OS X.
+Build
+########
+The following commands run on *nix platforms like Linux, OS X. For building Flow Trigger Dependency Plugin, we need to run the comment in ``/az-flow-trigger-dependency-type/kafka-event-trigger`` directory. 
 ::
   # Build Azkaban
-  ./gradlew build
+  ../../gradlew build
 
   # Clean the build
-  ./gradlew clean
-
-  # Build and install distributions
-  ./gradlew installDist
-
-  # Run tests
-  ./gradlew test
+  ../../gradlew clean
 
   # Build without running tests
-  ./gradlew build -x test
+  ../../gradlew build -x test
 
 These are all standard Gradle commands. Please look at Gradle documentation for more info.
 
-Gradle creates .tar.gz files inside project directories. eg. ./azkaban-solo-server/build/distributions/azkaban-solo-server-0.1.0-SNAPSHOT.tar.gz. Untar using tar -xvzf path/to/azkaban-*.tar.gz.
 
 
-*****
-Getting started with the Solo Server
-*****
-The solo server is a standalone instance of Azkaban and the simplest to get started with. The solo server has the following advantages.
-
-- **Easy to install** - No MySQL instance is needed. It packages H2 as its main persistence storage.
-- **Easy to start up** - Both web server and executor server run in the same process.
-- **Full featured** - It packages all Azkaban features. You can use it in normal ways and install plugins for it.
-
-
-Installing the Solo Server
+Solo-Server Configuration
 ########
+The gradlew commands help you to build the fat JAR. After that, you need to specify the plugin.dir within solo-server in ``conf``. Override the ``azkaban.dependency.plugin.dir`` property for runtime parameters inside the ``azkaban.properties`` file under the solo-server ``conf`` directory.
+This property needs to set to contain the location where you put your Event-Trigger JAR file. 
 
-Follow these steps to get started:
+Data Base Configuration (Optinal)
+########
+The following 4 properties can be defined in ``conf/azkaban.private.properties``. for solo-server based on the use case. 
+
++-----------------------------------------+
+| Properties                              |
++=========================================+
+| mysql.user                              |
++-----------------------------------------+
+| mysql.password                          |     
++-----------------------------------------+
+| org.quartz.dataSource.quartzDS.user     |
++-----------------------------------------+
+| org.quartz.dataSource.quartzDS.password |
++-----------------------------------------+
+
+*****
+Event Based Trigger Plugin Configuration
+*****
+
+Inside the Azkaban dependency plugin directory, there should be two items Event Based Trigger plugin jar and the ``dependency.properties``. 
+
+Required properties are :
+
+- **dependency.classpath** - Used by Azkaban identify plugins classpath. Should be the JAR file’s absolute path.
+
+- **dependency.class** - Used by Azkaban flow trigger instance to integrate with this configuration file. Take Event trigger for example, it should be  ``trigger.kafka.KafkaDependencyCheck``. 
+
+- **kafka.broker.url** - Specifying URL and port number where your Kafka broker is. 
+
+
+
+*****
+Event Trigger Instance Configuration
+*****
+Event trigger is part of flow definition and each flow can only have one event trigger at most. 
+Defining an event trigger is supported via Hadoop DSL.
+The trigger need to be configurated within the flow file along with the project zip that users upload.
+Event trigger is composed of a list of event dependencies, max wait time and schedule.
+Take the following figure as example:
+
+.. image:: TriggerExample.png
+
+- **Max Wait Time**: How long the trigger will wait for all dependencies to be available before cancelling it.
+- **Trigger.schedule**: The schedule to perform this workflow on the regular basis. We use the cron time format here to specify, creating a trigger followed by the project workflow every 2 minutes 
+
+- **Trigger.schedule**: The params here is to clarify what regex pattern happening in the event coming from specific topic channel. The trigger kick-starts the flow if all of predefined dependency conditions are met. 
+
+Therefore, this trigger example will launch the flow once detecting Kafka event with anything in ``AzEvent_Topic4``, ``.*Partition[A-Z]....Event`` string in event comming from ``AzEvent_Topic4`` and ``hadoop?.*`` in ``AzEvent_Topic1``.
+
+The matching mechanism can be extended other than regex since now it is implemented as a generic interface.
+
+
+
+*****
+Event Based Trigger Example With Azkaban UI
+*****
+
+
+Follow these steps to run end to end local test:
 
 1. Clone the repo:
 ::
@@ -79,191 +117,15 @@ Azkaban solo server should be all set, by listening to ``8081`` port at default 
 ::
   bin/azkaban-solo-shutdown.sh
 
-
-The solo-server installation should contain the following directories.
-
-+----------+---------------------------------------------------------+
-| Folder   | Description                                             |
-+==========+=========================================================+
-| bin      | The scripts to start/stop Azkaban solo server           |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| conf     | The configuration files for Azkaban solo server         |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| lib      | The jar dependencies for Azkaban                        |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| extlib   | Additional jars that are added to extlib will be added  |
-|          | to Azkaban's classpath                                  |
-+----------+---------------------------------------------------------+
-| plugins  | the directory where plugins can be installed            |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| web      | The web (css, javascript, image) files for Azkaban web  |
-|          | server                                                  |
-+----------+---------------------------------------------------------+
-
-
-Inside the ``conf`` directory, there should be three files:
-
-- ``azkaban.private.properties`` - Used by Azkaban to store secrets like Mysql password
-- ``azkaban.properties`` - Used by Azkaban for runtime parameters
-- ``global.properties`` - Global static properties that are passed as shared properties to every workflow and job.
-- ``azkaban-users.xml`` - Used to add users and roles for authentication. This file is not used if the XmLUserManager is not set up to use it.
-
-The ``The azkaban.properties`` file is the main configuration file.
-
-
-Configuring HTTPS server (*Optional*)
-########
-
-Azkaban solo server by default doesn't use SSL. But you could set it up the same way in a stand alone web server. Here is how:
-
-Azkaban web server supports SSL socket connectors, which means a keystore will have to be available. You can follow the steps to generate a valid jetty keystore provided at `here <https://wiki.eclipse.org/Jetty/Howto/Configure_SSL>`_. Once a keystore file has been created, Azkaban must be given its location and password. Within ``azkaban.properties`` or ``azkaban.private.properties`` (recommended), the following properties should be overridden.
-::
-  jetty.keystore=keystore
-  jetty.password=password
-  jetty.keypassword=password
-  jetty.truststore=keystore
-  jetty.trustpassword=password
-
-And configure ssl port in `azkaban.properties`:
-::
-  jetty.ssl.port=8443
+*****
+Limitation
+*****
 
 
 *****
-Getting started with the Multi Executor Server
+Resource Referance
 *****
-
-Databasea setup
-########
-
-We suggest users to opt for **Mysql** as Azkaban database, because we build up a few Mysql connection enhancements to facilitate AZ set up, and strengthen service reliability:
-
-
-- Install Mysql
-
-  Installation of MySQL DB won't be covered by these instructions, but you can access the instructions on `MySQL Documentation Site <https://dev.mysql.com/doc/>`_.
-
-- Set up Mysql
-
-   a. create database for Azkaban.::
-
-         # Example database creation command, although the db name doesn't need to be 'azkaban'
-         mysql> CREATE DATABASE azkaban;
-
-   b. create a mysql user for Azkaban. For example,::
-
-         # Example database creation command. The user name doesn't need to be 'azkaban'
-         mysql> CREATE USER 'username'@'%' IDENTIFIED BY 'password';
-         # give the user INSERT, SELECT, UPDATE, DELETE permission on all tables in the Azkaban db.
-         mysql> GRANT SELECT,INSERT,UPDATE,DELETE ON azkaban.* to '<username>'@'%' WITH GRANT OPTION;
-
-   c. Mysql Packet Size may need to be re-configured. MySQL may have, by default, a ridiculously low allowable packet size. To increase it, you'll need to have the property max_allowed_packet set to a higher number, say 1024M.
-      To configure this in linux, open /etc/my.cnf. Somewhere after mysqld, add the following::
-
-         [mysqld]
-         ...
-         max_allowed_packet=1024M
-
-      To restart MySQL, you can run::
-
-         $ sudo /sbin/service mysqld restart
-
-
-- Create the Azkaban Tables
-
-  Run individual table creation scripts from `latest table statements <https://github.com/azkaban/azkaban/tree/master/azkaban-db/src/main/sql>`_ on the MySQL instance to create your tables. 
-
-  Alternatively, run create-all-sql-<version>.sql generated by build process. The location is the file is at ``/Users/latang/LNKDRepos/azkaban/azkaban-db/build/distributions/azkaban-db-<version>``, after you build `azkaban-db` module by ::
- 
-    cd azkaban-db; ../gradlew build installDist
-
-Installing Azkaban Executor Server
-########
-
-Azkaban Executor Server handles the actual execution of the workflow and jobs. You can build the latest version from the master branch. See here for instructions on `Building from Source`_.
-
-Extract the package (executor distribution tar.gz from build folder) into a directory after gradle build. There should be the following directories.
-
-+----------+---------------------------------------------------------+
-| Folder   | Description                                             |
-+==========+=========================================================+
-| bin      | The scripts to start/stop Azkaban solo server           |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| conf     | The configuration files for Azkaban solo server         |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| lib      | The jar dependencies for Azkaban                        |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| extlib   | Additional jars that are added to extlib will be added  |
-|          | to Azkaban's classpath                                  |
-+----------+---------------------------------------------------------+
-| plugins  | the directory where plugins can be installed            |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-
-For quick start, we may directly use the Installation directory `azkaban/azkaban-exec-server/build/install/azkaban-exec-server` generated by gradle. we only need to change mysql username and password inside ``azkaban.properties``::
-
-  # Mysql Configs
-  mysql.user=<username>
-  mysql.password=<password>
-
-Then run::
-
-  cd azkaban-solo-server/build/install/azkaban-exec-server
-  ./bin/start-exec.sh
-
-After that, remember to activate the executor by calling::
-
-  cd azkaban-exec-server/build/install/azkaban-exec-server
-  curl -G "localhost:$(<./executor.port)/executor?action=activate" && echo
-
-Then, one executor is ready for use. Users can set up multiple executors by distributing and deploying multiple executor installation distributions.
-
-
-Installing Azkaban Web Server
-########
-
-Azkaban Web Server handles project management, authentication, scheduling and trigger of executions. You can build the latest version from the master branch. See here for instructions on `Building from Source`_.
-
-Extract the package (executor distribution tar.gz from build folder) into a directory after gradle build. There should be the following directories.
-
-+----------+---------------------------------------------------------+
-| Folder   | Description                                             |
-+==========+=========================================================+
-| bin      | The scripts to start/stop Azkaban solo server           |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| conf     | The configuration files for Azkaban solo server         |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| lib      | The jar dependencies for Azkaban                        |
-|          |                                                         |
-+----------+---------------------------------------------------------+
-| web      | The web (css, javascript, image) files for Azkaban web  |
-|          | server                                                  |
-+----------+---------------------------------------------------------+
-
-
-For quick start, we may directly use the Installation directory `azkaban/azkaban-web-server/build/install/azkaban-web-server` generated by gradle. we only need to change mysql username and password inside ``azkaban.properties``::
-
-  # Mysql Configs
-  mysql.user=<username>
-  mysql.password=<password>
-
-Then run ::
-
-  cd azkaban-web-server/build/install/azkaban-web-server
-  ./bin/start-web.sh
-
-Then, a multi-executor Azkaban instance is ready for use. Open a web browser and check out ``http://localhost:8081/``
-You are all set to login to Azkaban UI.
-
+- `MySQL Documentation Site <https://dev.mysql.com/doc/>`_
 
 
 
