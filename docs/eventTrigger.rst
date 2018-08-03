@@ -15,7 +15,7 @@ Currently there are only few ways to launch jobs in Azkaban including schedules 
 Apache Kafka is a Publish & Subscribe data streaming system. By utilizing Kafka, we do the regular expression match on the Kafka event payload. With the contain-a logic matching, a dependency will be marked as satisfied only if the whole payload contains the Regex pattern that user predefines.
 
 *****
-Getting started with Deploying Event Trigger on the Azkaban
+Getting Started with Deploying Event Trigger on the Azkaban
 *****
 
 Azkaban builds use Gradle (downloads automatically when run using gradlew which is the Gradle wrapper) and requires Java 8 or higher.
@@ -42,9 +42,9 @@ Server Configuration
 The gradlew commands help you to build the fat JAR. After that, you need to specify the plugin.dir within ``conf``. Take solo-server for example, override the ``azkaban.dependency.plugin.dir`` property for runtime parameters inside the ``azkaban.properties`` file under the solo-server ``conf`` directory.
 This property needs to set to contain the location where you put your Event-Trigger JAR file. 
 
-Data Base Configuration (Optional)
+Data Base Configuration
 ########
-The following 4 properties can be defined in ``conf/azkaban.private.properties``. for solo-server based on the use case. 
+The following 4 properties have to be defined in ``conf/azkaban.private.properties``. for solo-server based on the use case. 
 
 +-----------------------------------------+
 | Properties                              |
@@ -88,7 +88,7 @@ Take the following figure as example:
 - **Max Wait Time**: How long the trigger will wait for all dependencies to be available before cancelling it.
 - **Trigger.schedule**: The schedule to perform this workflow on the regular basis. We use the cron time format here to specify, creating a trigger followed by the project workflow every 2 minutes 
 
-- **Trigger.schedule**: The params here is to clarify what regex pattern happening in the event coming from specific topic channel. The trigger kick-starts the flow if all of predefined dependency conditions are met. 
+- **triggerDependencies**: The params here is to clarify what regex pattern happening in the event coming from specific topic channel. The trigger kick-starts the flow if all of predefined dependency conditions are met. 
 
 Therefore, this trigger example will launch the flow once detecting Kafka event with anything in ``AzEvent_Topic4``, ``.*Partition[A-Z]....Event`` string in event comming from ``AzEvent_Topic4`` and ``hadoop?.*`` in ``AzEvent_Topic1``.
 
@@ -96,7 +96,7 @@ The matching mechanism can be extended other than regex since now it is implemen
 
 
 *****
-Event Based Trigger Example With Azkaban UI
+Event Based Trigger Example with Azkaban UI
 *****
 All scheduled data trigger will show up Azkaban Flow Trigger section. Also, project admins are able to pause and resume a scheduled trigger for undesirable situation.
 
