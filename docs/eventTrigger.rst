@@ -4,13 +4,16 @@
 Flow Trigger Dependency Plugin
 ==================================
 *****
-Event Based Trigger
+Kafka Event Based trigger
 *****
 
 
 ..
    Todo:: Link to the data trigger documentation if available
-Currently there are only few ways to launch jobs in Azkaban including schedules and API. However, they are limited because sometimes jobs need to be executed automatically on demand. Event trigger is a new feature introduced by Azkaban. It defines a new paradigm of triggering flows - triggering a flow on event arrival. This concept enables users to define events that the flow depends on. Once all of the dependencies become ready, a workflow will be triggered. 
+
+
+
+Currently Azkaban supports launching flows via scheduling it or Ajax API. However, they are limited because sometimes jobs need to be executed automatically on demand. Event trigger is a new feature introduced by Azkaban. It defines a new paradigm of triggering flows - triggering a flow on Kafka event arrival. This concept enables users to define events that the flow depends on. Once all of the events become ready, a workflow will be triggered.
 
 Apache Kafka is a Publish & Subscribe data streaming system. By utilizing Kafka, we do the regular expression match on the Kafka event payload. With the contain-a logic matching, a dependency will be marked as satisfied only if the whole payload contains the Regex pattern that user predefines.
 
@@ -42,7 +45,7 @@ Server Configuration
 The gradlew commands help you to build the fat JAR. After that, you need to specify the plugin.dir within ``conf``. Take solo-server for example, override the ``azkaban.dependency.plugin.dir`` property for runtime parameters inside the ``azkaban.properties`` file under the solo-server ``conf`` directory.
 This property needs to set to contain the location where you put your Event-Trigger JAR file. 
 
-Data Base Configuration
+Database Configuration
 ########
 The following 4 properties have to be defined in ``conf/azkaban.private.properties``. for solo-server based on the use case. 
 
